@@ -1,0 +1,79 @@
+pipeline{
+    agent any
+    tools{
+        maven "Maven3.8.6"
+    }
+    stages {
+        stage('checkout'){
+            steps{
+               git 'https://github.com/Ajoke93/maven-web-application.git'
+                echo "cloned"
+            }
+        }
+        stage('build'){
+            steps{
+            sh "mvn clean package"
+            echo "done building"
+        }
+        }
+         stage('code quality'){
+              steps{
+              sh "mvn sonar:sonar"
+              echo "quality test done"
+            }
+         }
+           stage('artifactory'){
+            steps{
+            sh "mvn deploy"
+            echo "saved artifact"
+            }
+        }
+         stage('DEV deploymenent'){
+             steps{
+            deploy adapters: [tomcat9(credentialsId: 'newtomcatcred', path: '', url: 'http://3.99.166.5:8080')], contextPath: null, war: 'target/*war'
+            echo "user acceptance done"
+            }
+        }
+         stage('slack notification'){
+         steps{
+            slackSend channel: '#cicd', message: 'Deployment to DEV successful'
+            }
+        }
+          stage('DEV approval'){
+            steps{
+            echo "taking approval from DEV manager for QA deployment"
+            time(time:90, unit:'SECONDS')
+            input message: "Do you want to deploy to QA" submitter: 'admin'
+            }
+        }
+         stage('deploy to QA'){
+            steps{
+            deploy adapters: [tomcat9(credentialsId: 'newtomcatcred', path: '', url: 'http://3.99.166.5:8080')], contextPath: null, war: 'target/*war'
+            echo "QA deployment succcessful"
+            }
+        }   
+         stage('slack notification-QA'){
+          steps{
+            slackSend channel: '#cicd', message: 'Deployment to QA successful,please start your testing'
+            }
+        }
+         stage('QA approval'){
+            steps{
+            echo "taking approval from QA manager"
+            time(time:120, unit:'SECONDS')
+            input message: "Do you want to proceed to PROD" submitter: 'admin'
+            }
+        }
+         stage("deploy to production"){
+            steps{
+            deploy adapters: [tomcat9(credentialsId: 'newtomcatcred', path: '', url: 'http://3.99.166.5:8080')], contextPath: null, war: 'target/*war'
+         echo "deployed to production"
+            }
+        }
+         stage('slack notification-PROD'){
+          steps{
+            slackSend channel: '#cicd', message: 'Deployment to PROD successful'
+            }
+        }
+    }
+}
