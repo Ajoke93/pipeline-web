@@ -6,7 +6,7 @@ pipeline{
     stages {
         stage('checkout'){
             steps{
-               git 'https://github.com/Ajoke93/maven-web-application.git'
+               git 'https://github.com/Ajoke93/pipeline-web.git'
                 echo "cloned"
             }
         }
